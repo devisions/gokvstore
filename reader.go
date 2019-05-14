@@ -98,7 +98,7 @@ func (r *Reader) hasKey(key []byte) (int, bool) {
 	if i > len(r.keyIndex) {
 		return -1, false
 	}
-	if bytes.Compare(r.keyIndex[i-1].Key, key) == 0 {
+	if bytes.Equal(r.keyIndex[i-1].Key, key) {
 		return i, true
 	}
 	return -1, false
@@ -115,7 +115,7 @@ func (r *Reader) Get(key []byte) ([]byte, bool) {
 	iter := r.seek(key, idx)
 	for iter.Next() && iter.err == nil {
 		k := iter.Key()
-		if bytes.Compare(k, key) == 0 {
+		if bytes.Equal(k, key) {
 			value = iter.Value()
 			break
 		}
@@ -164,8 +164,8 @@ func (r *Reader) readBlockInfo(offset uint64, bufLen int64) ([]blockInfo, error)
 		return nil, err
 	}
 	blocks := make([]blockInfo, 0)
-	i, n := 0, 1
-	for n != 0 {
+	i, _ := 0, 1
+	for  {
 		bi, n := decodeBlockInfo(b[i:])
 		if bi.length == 0 {
 			break

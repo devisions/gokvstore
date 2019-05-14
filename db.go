@@ -183,7 +183,7 @@ func (db *Database) Get(key []byte) (value []byte, err error) {
 	}
 	val := db.findInMemDb(key)
 	if val != nil {
-		if bytes.Compare(val, []byte(deleteMarker)) == 0 {
+		if bytes.Equal(val, []byte(deleteMarker)) {
 			return nil, ErrKeyNotFound
 		}
 		return val, nil
@@ -194,7 +194,7 @@ func (db *Database) Get(key []byte) (value []byte, err error) {
 	}
 	r := NewReader(sst)
 	val, ok := r.Get(key)
-	if ok && bytes.Compare(val, []byte(deleteMarker)) != 0 {
+	if ok && !bytes.Equal(val, []byte(deleteMarker)) {
 		return val, nil
 	}
 

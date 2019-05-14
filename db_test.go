@@ -2,7 +2,6 @@ package gokvstore
 
 import (
 	"bytes"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -372,14 +371,11 @@ func TestDatabaseRange(t *testing.T) {
 	if err != nil {
 		t.Error("range failed")
 	}
-	if bytes.Compare(cur.data[1].key, []byte("02j5C")) != 0 {
+	if !bytes.Equal(cur.data[1].key, []byte("02j5C")) {
 		t.Errorf("expected %s, got %s", []byte("02j5C"), cur.data[1].key)
 	}
-	if bytes.Compare(cur.data[len(cur.data)-1].key, []byte("04ZfI")) != 0 {
+	if !bytes.Equal(cur.data[len(cur.data)-1].key, []byte("04ZfI")) {
 		t.Errorf("expected %s, got %s", []byte("04ZfI"), cur.data[len(cur.data)-1].key)
-	}
-	for cur.Next() {
-		fmt.Printf("key:%s,value:%s\n", cur.Key(), cur.Value())
 	}
 	db.Close()
 }
@@ -405,7 +401,7 @@ func TestDatabaseGet(t *testing.T) {
 	if err != nil {
 		t.Error("Get failed", err)
 	}
-	if bytes.Compare([]byte("value1"), val) != 0 {
+	if !bytes.Equal([]byte("value1"), val) {
 		t.Errorf("got %s, expected %s", val, []byte("value1"))
 	}
 
@@ -474,7 +470,7 @@ func TestDatabase_GetFromMemDb(t *testing.T) {
 		if err != nil {
 			t.Error("Get failed")
 		}
-		if bytes.Compare(val, values[k]) != 0 {
+		if !bytes.Equal(val, values[k]) {
 			t.Errorf("key %s, expected %s, got %s", keys[k], values[k], val)
 		}
 	}
@@ -514,7 +510,7 @@ func TestDatabase_GetFromSStable(t *testing.T) {
 		if err != nil {
 			t.Error("Get failed")
 		}
-		if bytes.Compare(val, values[k]) != 0 {
+		if !bytes.Equal(val, values[k]) {
 			t.Errorf("key %s, expected %s, got %s", keys[k], values[k], val)
 		}
 	}
