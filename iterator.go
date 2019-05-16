@@ -1,6 +1,8 @@
 package gokvstore
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+)
 
 type chunkIterator struct {
 	data       []byte
