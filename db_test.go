@@ -23,7 +23,7 @@ func TestDatabase_Open(t *testing.T) {
 	dir := "/tmp/test"
 	db, err := Open(dir, nil)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	if db == nil {
 		t.Error("should have got db instance")
@@ -35,7 +35,7 @@ func TestDatabasePut_ReadOnly(t *testing.T) {
 	dir := "/tmp/test"
 	db, err := Open(dir, DefaultOptions)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	err = db.Put([]byte("key"), []byte("value"))
 	if err != ErrDataBaseReadOnly {
@@ -53,7 +53,7 @@ func TestDatabasePut_NilKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	err = db.Put(nil, []byte("value"))
 	if err != ErrKeyRequired {
@@ -71,7 +71,7 @@ func TestDatabasePut_NilValue(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	err = db.Put([]byte("key"), nil)
 	if err != ErrValueRequired {
@@ -88,7 +88,7 @@ func TestDatabasePut_EmptyValue(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	err = db.Put([]byte("key"), []byte(""))
 	if err != ErrValueRequired {
@@ -106,7 +106,7 @@ func TestDatabasePut_EmptyKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	err = db.Put([]byte(""), []byte("value"))
 	if err != ErrKeyRequired {
@@ -124,7 +124,7 @@ func TestDatabasePut(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	err = db.Put([]byte("key"), []byte("value"))
 	if err != nil {
@@ -142,7 +142,7 @@ func TestDatabaseGet_BadKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Get([]byte("BadKey"))
 	if err != ErrKeyNotFound {
@@ -160,7 +160,7 @@ func TestDatabaseGet_NilKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Get(nil)
 	if err != ErrKeyRequired {
@@ -178,7 +178,7 @@ func TestDatabaseGet_EmptyKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Get([]byte(""))
 	if err != ErrKeyRequired {
@@ -195,7 +195,7 @@ func TestDatabaseDelete_BadKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Delete([]byte("BadKey"))
 	if err != ErrDeleteFailed {
@@ -213,7 +213,7 @@ func TestDatabaseDelete_NilKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Delete(nil)
 	if err != ErrKeyRequired {
@@ -231,7 +231,7 @@ func TestDatabaseDelete_EmptyKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Delete([]byte(""))
 	if err != ErrKeyRequired {
@@ -249,15 +249,15 @@ func TestDatabaseDelete(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	err = db.Put([]byte("testkey"), []byte("testvalue"))
 	if err != nil {
-		t.Error("put failed")
+		t.Error("put failed",err)
 	}
 	_, err = db.Delete([]byte("testkey"))
 	if err != nil {
-		t.Error("delete failed")
+		t.Error("delete failed",err)
 	}
 	_, err = db.Get([]byte("testkey"))
 	if err != ErrKeyNotFound {
@@ -275,12 +275,13 @@ func TestDatabaseRange_EmptyStartKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Range([]byte(""), []byte("endKey"))
 	if err != ErrKeyRequired {
 		t.Errorf("expected %v, got %v", ErrKeyNotFound, err)
 	}
+
 	db.Close()
 }
 
@@ -293,7 +294,7 @@ func TestDatabaseRange_NilStartKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Range(nil, []byte("endKey"))
 	if err != ErrKeyRequired {
@@ -311,7 +312,7 @@ func TestDatabaseRange_EmptyEndKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Range([]byte("startkey"), []byte(""))
 	if err != ErrKeyRequired {
@@ -329,7 +330,7 @@ func TestDatabaseRange_NilEndKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Range([]byte("startkey"), nil)
 	if err != ErrKeyRequired {
@@ -347,7 +348,7 @@ func TestDatabaseRange_StartkeyGTEndKey(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Range([]byte("G"), []byte("A"))
 	if err != ErrInvalidRange {
@@ -365,18 +366,25 @@ func TestDatabaseRange(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	cur, err := db.Range([]byte("02j5C"), []byte("04ZfI"))
-	if err != nil {
-		t.Error("range failed")
+	if cur == nil && err != ErrKeyNotFound {
+		t.Errorf("expexted %s, got %s",ErrKeyNotFound, err)
 	}
-	if !bytes.Equal(cur.data[1].key, []byte("02j5C")) {
-		t.Errorf("expected %s, got %s", []byte("02j5C"), cur.data[1].key)
+	if cur == nil {
+		return
 	}
-	if !bytes.Equal(cur.data[len(cur.data)-1].key, []byte("04ZfI")) {
-		t.Errorf("expected %s, got %s", []byte("04ZfI"), cur.data[len(cur.data)-1].key)
+	for cur.Next(){
+		if !bytes.Equal(cur.data[1].key, []byte("02j5C")) {
+			t.Errorf("expected %s, got %s", []byte("02j5C"), cur.data[1].key)
+		}
+		if !bytes.Equal(cur.data[len(cur.data)-1].key, []byte("04ZfI")) {
+			t.Errorf("expected %s, got %s", []byte("04ZfI"), cur.data[len(cur.data)-1].key)
+		}
+
 	}
+	cur.Close()
 	db.Close()
 }
 
@@ -389,7 +397,7 @@ func TestDatabaseGet(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	err = db.Put([]byte("key"), []byte("value1"))
 
@@ -421,11 +429,11 @@ func TestDatabase_Closed(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("got error")
+		t.Error("failed to open database",err)
 	}
 	_, err = db.Close()
 	if err != nil {
-		t.Error("failed to close database")
+		t.Error("failed to close database",err)
 	}
 	err = db.Put([]byte("key"), []byte("value1"))
 
@@ -451,7 +459,7 @@ func TestDatabase_GetFromMemDb(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("failed to open database")
+		t.Error("failed to open database",err)
 	}
 
 	for j := 0; j < 1000; j++ {
@@ -461,14 +469,14 @@ func TestDatabase_GetFromMemDb(t *testing.T) {
 		values = append(values, value)
 		err := db.Put(key, value)
 		if err != nil {
-			t.Error("failed to put")
+			t.Error("failed to put",err)
 		}
 	}
 
 	for k := 0; k < len(keys); k++ {
 		val, err := db.Get(keys[k])
 		if err != nil {
-			t.Error("Get failed")
+			t.Error("Get failed",err)
 		}
 		if !bytes.Equal(val, values[k]) {
 			t.Errorf("key %s, expected %s, got %s", keys[k], values[k], val)
@@ -491,7 +499,7 @@ func TestDatabase_GetFromSStable(t *testing.T) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		t.Error("failed to open database")
+		t.Error("failed to open database",err)
 	}
 
 	for j := 0; j < filterSize+10; j++ {
@@ -501,14 +509,14 @@ func TestDatabase_GetFromSStable(t *testing.T) {
 		values = append(values, value)
 		err := db.Put(key, value)
 		if err != nil {
-			t.Error("failed to put")
+			t.Error("failed to put",err)
 		}
 	}
 
 	for k := 0; k < len(keys); k += 1000 {
 		val, err := db.Get(keys[k])
 		if err != nil {
-			t.Error("Get failed")
+			t.Error("Get failed",err)
 		}
 		if !bytes.Equal(val, values[k]) {
 			t.Errorf("key %s, expected %s, got %s", keys[k], values[k], val)
@@ -528,13 +536,13 @@ func BenchmarkDatabase_Put(b *testing.B) {
 	}
 	db, err := Open(dir, &opts)
 	if err != nil {
-		b.Error("failed to open database")
+		b.Error("failed to open database",err)
 	}
 
 	for j := 0; j < b.N; j++ {
 		err := db.Put(randomBytes(5), randomBytes(5))
 		if err != nil {
-			b.Error("failed to put")
+			b.Error("failed to put",err)
 		}
 	}
 	db.Close()

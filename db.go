@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	MemdbFileName = "memfs.gob"
-	CurrentLog    = "writeahead.log"
-	OldLog        = "writeahead_old.log"
-	filterSize    = 1 << 16
-	deleteMarker  = "tombstone/0"
+	MemdbFileName    = "memfs.gob"
+	CurrentLog       = "writeahead.log"
+	OldLog           = "writeahead_old.log"
+	filterSize       = 1 << 16
+	deleteMarker     = "tombstone/0"
 )
 
 var (
@@ -45,7 +45,6 @@ type Database struct {
 	memdb   *memfs.Memtable
 	filter  *boom.ScalableBloomFilter
 	log     *os.File
-	logKeys int
 }
 
 func Open(dir string, options *Options) (db *Database, err error) {
@@ -102,7 +101,6 @@ func (db *Database) Put(key, value []byte) (err error) {
 		Val: value,
 	}
 	err = WriteLog(db.log, []byte(r.String()))
-	db.logKeys++
 	if err != nil {
 		return err
 	}
@@ -114,7 +112,7 @@ func (db *Database) Put(key, value []byte) (err error) {
 		}
 	}
 
-	if db.memdb.Size() == filterSize {
+	if db.memdb.Size() >= filterSize {
 		oldMemdb := db.memdb
 		db.writeKeysToFilter(oldMemdb)
 		err := db.writeSSTable(oldMemdb)
@@ -122,14 +120,12 @@ func (db *Database) Put(key, value []byte) (err error) {
 			return errors.Wrap(err, "failed to write data to sstable")
 		}
 		db.memdb = memfs.NewMemtable()
-		if err := db.fs.RenameFile(CurrentLog, OldLog); err != nil {
-			return errors.Wrap(err, "failed to rename current log")
+		if err = RotateLog(db); err != nil {
+			return errors.Wrap(err, "failed to rotate log file")
 		}
-		if err := db.fs.DeleteFile(OldLog); err != nil {
-			return errors.Wrap(err, "failed to delete old log")
-		}
-		if db.log, err = db.fs.OpenLogFile(CurrentLog); err != nil {
-			return errors.Wrap(err, "failed to create new log")
+
+		if err := db.fs.DeleteFile(MemdbFileName); err != nil {
+			return errors.Wrap(err, "failed to delete memdb file")
 		}
 
 	}
@@ -154,7 +150,7 @@ func (db *Database) writeSSTable(memdb *memfs.Memtable) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "unable to create sstable")
 	}
-	w := NewWriter(sst)
+	w := NewWriter(sst,db.options.UseCompression)
 	_, err = db.filter.WriteTo(sst.filterfile)
 	defer sst.filterfile.Close()
 	if err != nil {
@@ -192,7 +188,7 @@ func (db *Database) Get(key []byte) (value []byte, err error) {
 	if sst == nil {
 		return nil, ErrKeyNotFound
 	}
-	r := NewReader(sst)
+	r := NewReader(sst,db.options.UseCompression)
 	val, ok := r.Get(key)
 	if ok && !bytes.Equal(val, []byte(deleteMarker)) {
 		return val, nil
@@ -261,7 +257,7 @@ func (db *Database) Range(startkey, endKey []byte) (cursor *Cursor, err error) {
 	if strings.Compare(sst1.Id(), sst2.Id()) != 0 {
 		return nil, ErrRangeError
 	}
-	r := NewReader(sst1)
+	r := NewReader(sst1,db.options.UseCompression)
 	cursor, err = r.Range(startkey, endKey)
 	if err != nil {
 		return nil, err

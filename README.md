@@ -17,11 +17,12 @@ Example
     		ReadOnly:       false,
     		UseCompression: true,
     		SyncWrite:      false,
-    	}
-	// or use the default options. 
+    	}// or use the default options. 
 	
+	//open the database
 	db, err := Open(dir, opts)
 	
+	//work with the database
 	err = db.Put([]byte("somekey"), []byte("somevalue"))
 	
 	
@@ -29,8 +30,14 @@ Example
 	
 	ok, err = db.Delete([]byte("somekey"))
 	
-	c,err := db.Range([]byte("startkey"),[]byte("endkey"))
-	
+	cursor,err := db.Range([]byte("startkey"),[]byte("endkey"))
+	//iterate over keys and values
+	for cursor.Next() {
+	    k := cursor.Key()
+	    v:=  cursor.Value()
+	}
+	cursor.Close()
+	//close the database
 	err = db.Close()
 	
     

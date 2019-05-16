@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/maneeshchaturvedi/gokvstore/memfs"
+	"github.com/pkg/errors"
 )
 
 func MemdbToArr(memdb *memfs.Memtable) (arr []memfs.Record) {
@@ -58,3 +59,17 @@ func WriteLog(file *os.File, data []byte) (err error) {
 	}
 	return nil
 }
+
+func RotateLog(db *Database) (err error) {
+	if err := db.fs.RenameFile(CurrentLog, OldLog); err != nil {
+		return errors.Wrap(err, "failed to rename current log")
+	}
+	if err := db.fs.DeleteFile(OldLog); err != nil {
+		return errors.Wrap(err, "failed to delete old log")
+	}
+	if db.log, err = db.fs.OpenLogFile(CurrentLog); err != nil {
+		return errors.Wrap(err, "failed to create new log")
+	}
+	return nil
+}
+

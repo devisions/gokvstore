@@ -144,9 +144,19 @@ func (fs *FileSystem) OpenFile(name string, flag int, mode os.FileMode) (file *o
 }
 
 func (fs *FileSystem) RenameFile(oldName string, newName string) (err error) {
+	_, err = os.Stat(path.Join(fs.path, oldName))
+
+	if os.IsNotExist(err) {
+		return nil
+	}
 	return os.Rename(path.Join(fs.path, oldName), path.Join(fs.path, newName))
 }
 func (fs *FileSystem) DeleteFile(name string) (err error) {
+	_, err = os.Stat(path.Join(fs.path, name))
+
+	if os.IsNotExist(err) {
+		return nil
+	}
 	return os.Remove(path.Join(fs.path, name))
 }
 func (fs *FileSystem) OpenLogFile(name string) (file *os.File, error error) {

@@ -31,6 +31,7 @@ type Reader struct {
 	err        error
 	keyIndex   []index
 	blocks     []blockInfo
+	compress   bool
 }
 
 func (r *Reader) seek(key []byte, i int) *chunkIterator {
@@ -64,6 +65,10 @@ func (r *Reader) seek(key []byte, i int) *chunkIterator {
 }
 
 func (r *Reader) Range(startkey, endkey []byte) (cursor *Cursor, err error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+
 	d := make([]data, 0)
 	idx1, found := r.hasKey(startkey)
 	if !found {
@@ -128,20 +133,28 @@ func (r *Reader) Get(key []byte) ([]byte, bool) {
 }
 
 func (r *Reader) readBlock(bi blockInfo) (block, error) {
+
+	//b := make([]byte, bi.length)
 	data, err := syscall.Mmap(int(r.datafile.Fd()), int64(bi.start), int(bi.length), syscall.PROT_READ, syscall.MAP_PRIVATE)
 	if err != nil {
-		errors.Wrap(err, "failed to mmap the datafile for reading")
-		r.err = err
+		return nil, errors.Wrap(err, "failed to mmap the datafile for reading")
 	}
 
+	//if r.compress {
+	//	b, err = snappy.Decode(nil, data)
+	//	if err != nil {
+	//		return nil, errors.Wrap(err, "failed to uncompress data")
+	//
+	//	}
+	//}
+	//fmt.Printf("decompressed data %s\n,",string(b))
 	return data, nil
 }
 
 func (r *Reader) readIndex(offset uint64) ([]index, error) {
 	data, err := syscall.Mmap(int(r.metafile.Fd()), 0, int(offset), syscall.PROT_READ, syscall.MAP_PRIVATE)
 	if err != nil {
-		errors.Wrap(err, "failed to mmap the metafile for reading")
-		r.err = err
+		return nil, errors.Wrap(err, "failed to mmap the metafile for reading")
 	}
 	var buf bytes.Buffer
 	if _, err := buf.Write(data); err != nil {
@@ -165,7 +178,7 @@ func (r *Reader) readBlockInfo(offset uint64, bufLen int64) ([]blockInfo, error)
 	}
 	blocks := make([]blockInfo, 0)
 	i, _ := 0, 1
-	for  {
+	for {
 		bi, n := decodeBlockInfo(b[i:])
 		if bi.length == 0 {
 			break
@@ -177,7 +190,7 @@ func (r *Reader) readBlockInfo(offset uint64, bufLen int64) ([]blockInfo, error)
 
 }
 
-func NewReader(sst *SSTable) *Reader {
+func NewReader(sst *SSTable, compress bool) *Reader {
 	keyIndex := make([]index, 0)
 	blocks := make([]blockInfo, 0)
 
@@ -187,6 +200,7 @@ func NewReader(sst *SSTable) *Reader {
 		datafile:   sst.DataFile(),
 		metafile:   sst.MetaFile(),
 		filterfile: sst.FilterFile(),
+		compress:   compress,
 	}
 
 	if r.datafile == nil {

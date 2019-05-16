@@ -51,6 +51,7 @@ type Writer struct {
 	buf                  []byte
 	err                  error
 	tmp                  [50]byte
+	compress             bool
 }
 
 func (w *Writer) Set(key, value []byte) error {
@@ -85,6 +86,9 @@ func (w *Writer) Set(key, value []byte) error {
 
 func (w *Writer) finishBlock() (blockInfo, error) {
 	b := w.buf
+	//if w.compress {
+	//	b = snappy.Encode(b, w.buf)
+	//}
 
 	if _, err := w.writer.Write(b); err != nil {
 		return blockInfo{}, err
@@ -205,7 +209,7 @@ func (w *Writer) writeFooter(n int) error {
 	return nil
 }
 
-func NewWriter(sst *SSTable) *Writer {
+func NewWriter(sst *SSTable, compress bool) *Writer {
 	keyIndex := make([]index, 0)
 	blocks := make([]blockInfo, 0)
 	buf := make([]byte, 0)
@@ -220,6 +224,7 @@ func NewWriter(sst *SSTable) *Writer {
 		dataFile:   sst.DataFile(),
 		metaFile:   sst.MetaFile(),
 		filterFile: sst.FilterFile(),
+		compress:   compress,
 	}
 	w.bufferedWriter = bufio.NewWriter(w.dataFile)
 	w.bufferedMetaWriter = bufio.NewWriter(w.metaFile)
