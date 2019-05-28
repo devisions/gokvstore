@@ -27,7 +27,6 @@ type MergingIterator struct {
 	iters                   []*chunkIterator
 	key, value              []byte
 	numKeysAfterCompaction  uint64
-	numKeysBeforeCompaction uint64
 }
 
 /*
@@ -89,12 +88,10 @@ func (mi *MergingIterator) least() int {
 	k := 0
 	for j := k + 1; j < len(mi.iters); j++ {
 		if mi.iters[k].End {
-			mi.numKeysBeforeCompaction += mi.iters[k].numKeys
 			k++
 			continue
 		}
 		if mi.iters[j].End {
-			mi.numKeysBeforeCompaction += mi.iters[j].numKeys
 			continue
 		}
 		if mi.iters[j].start {

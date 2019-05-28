@@ -146,10 +146,14 @@ func (c *Compactor) compactBucket(b *bucket) (cs compactionStats) {
 	elapsed := time.Since(startTime)
 	timeTaken := fmt.Sprintf("%s", elapsed)
 	b.processed = true
+	keysBeforeCompaction := uint64(0);
+	for _, iter := range iters {
+		keysBeforeCompaction += iter.numKeys
+	}
 	stats := compactionStats{
 		numFilesAfterCompaction:  1,
 		numFilesBeforeCompaction: len(b.files),
-		numKeysBeforeCompaction:  mergingIter.numKeysBeforeCompaction,
+		numKeysBeforeCompaction:  keysBeforeCompaction,
 		numKeysAfterCompaction:   mergingIter.numKeysAfterCompaction,
 		timeToCompactBucket:      timeTaken,
 		err:                      cerr,
