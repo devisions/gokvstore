@@ -1,7 +1,18 @@
+/*
+ * //  Licensed under the Apache License, Version 2.0 (the "License");
+ * //  you may not use this file except in compliance with the
+ * //  License. You may obtain a copy of the License at
+ * //    http://www.apache.org/licenses/LICENSE-2.0
+ * //  Unless required by applicable law or agreed to in writing,
+ * //  software distributed under the License is distributed on an "AS
+ * //  IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * //  express or implied. See the License for the specific language
+ * //  governing permissions and limitations under the License.
+ */
+
 package gokvstore
 
 import (
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,8 +22,12 @@ import (
 
 	"github.com/maneeshchaturvedi/gokvstore/memfs"
 	"github.com/pkg/errors"
+	"fmt"
 )
 
+/*
+MemdbToArr converts a memtable into a slice of memfs.Recrods
+ */
 func MemdbToArr(memdb *memfs.Memtable) (arr []memfs.Record) {
 	arr = make([]memfs.Record, 0)
 	sorted := memdb.InOrder()
@@ -25,6 +40,9 @@ func MemdbToArr(memdb *memfs.Memtable) (arr []memfs.Record) {
 	return arr
 }
 
+/*
+ArrToMemdb converts a slice of Record to a Memtable
+ */
 func ArrToMemdb(arr []memfs.Record) (memdb *memfs.Memtable) {
 	for _, r := range arr {
 		memdb.Insert(r)
@@ -32,7 +50,14 @@ func ArrToMemdb(arr []memfs.Record) (memdb *memfs.Memtable) {
 	return memdb
 }
 
+/*
+GetDataFiles returns the names of the data files in the specified directory
+ */
 func GetDataFiles(dir string) []string {
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		return nil
+	}
 	var files []string
 	filepath.Walk(dir, func(dir string, f os.FileInfo, _ error) error {
 		if !f.IsDir() {
@@ -47,9 +72,12 @@ func GetDataFiles(dir string) []string {
 	return files
 }
 
-func TimeTrack(start time.Time, name string) {
+/*
+TimeTrack can be used to instrument code for timing
+ */
+func TimeTrack(start time.Time, name string) string{
 	elapsed := time.Since(start)
-	log.Printf("%s took %s", name, elapsed)
+	return fmt.Sprintf("%s took %s", name, elapsed)
 }
 
 func WriteLog(file *os.File, data []byte) (err error) {
@@ -60,6 +88,9 @@ func WriteLog(file *os.File, data []byte) (err error) {
 	return nil
 }
 
+/*
+RotateLog rotates the write ahead log whenever the contents of a memtable are flushed to disk.
+ */
 func RotateLog(db *Database) (err error) {
 	if err := db.fs.RenameFile(CurrentLog, OldLog); err != nil {
 		return errors.Wrap(err, "failed to rename current log")
@@ -72,4 +103,3 @@ func RotateLog(db *Database) (err error) {
 	}
 	return nil
 }
-

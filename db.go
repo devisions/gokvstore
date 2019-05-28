@@ -15,38 +15,103 @@ import (
 )
 
 const (
-	MemdbFileName    = "memfs.gob"
-	CurrentLog       = "writeahead.log"
-	OldLog           = "writeahead_old.log"
-	filterSize       = 1 << 16
-	deleteMarker     = "tombstone/0"
+	//MemdbFileName is the name of the file to which we write C0 if it has not been written
+	//to an SSTable
+	MemdbFileName = "memfs.gob"
+	//CurrentLog is the name of the current write ahead log file.
+	CurrentLog    = "writeahead.log"
+	//OldLog is what we rename the current write ahead log file to before rotating it.
+	OldLog        = "writeahead_old.log"
+	//filterSize is the number of keys which we maintain in the Filter and the Memtable. Once this
+	//size is exceeded, we write the contents of the Memtable to an SSTable
+	filterSize    = 1 << 16
+	//deleteMarker is the value we write for a key which has been deleted.
+	deleteMarker  = "tombstone/0"
 )
 
 var (
+	//ErrPathRequired is returned if the path specified while creating the database is nil or empty
 	ErrPathRequired     = errors.New("path cannot be nil")
+	//ErrKeyRequired is the error returned if the key is nil or empty
 	ErrKeyRequired      = errors.New("key cannot be nil")
+	//ErrValueRequired is the error returned if the value is nil or empty
 	ErrValueRequired    = errors.New("value cannot be nil")
+	//ErrDatabaseReadOnly is returned if the database is opened in ReadOnly mode
+	// and the client attempts to write to it.
 	ErrDatabaseReadOnly = errors.New("database is readonly")
+	//ErrDatabaseClosed returned if the database is closed and any other operation
+	//except Open is invoked.
 	ErrDatabaseClosed   = errors.New("database not open")
+	//ErrKeyNotFound is returned if a key we are searching for does not
+	//exist in the database
 	ErrKeyNotFound      = errors.New("key not found")
+	//ErrDeleteFailed is returned if for some reason, deleting a key and associated value fails
 	ErrDeleteFailed     = errors.New("failed to delete key")
+	//ErrInvalidRange is returned if the start key is larger than the end keys
 	ErrInvalidRange     = errors.New("endKey should be greater than startKey")
+	//ErrRangeError is returned if the start and end key are not present in the same SSTable
 	ErrRangeError       = errors.New("endKey and startkey should be in the same segment")
 )
+/*
+The database struct is what the client uses to work with the database. The client would
+call Open specifying the path of the database and the options. Post a call to Open, the client can
+use the returned instance of the database to perform operations like Get, Put, Range, Delete etc.
 
+
+	dir := "path/to/some/dir"
+    opts := Options{
+    		ReadOnly:       false,
+    		UseCompression: true,
+    		SyncWrite:      false,
+    	}// or use the default options.
+
+	//open the database
+	db, err := Open(dir, opts)
+
+	//work with the database
+	err = db.Put([]byte("somekey"), []byte("somevalue"))
+
+
+	val,err := db.Get([]byte("somekey"))
+
+	ok, err = db.Delete([]byte("somekey"))
+
+	cursor,err := db.Range([]byte("startkey"),[]byte("endkey"))
+	//iterate over keys and values
+	for cursor.Next() {
+	    k := cursor.Key()
+	    v:=  cursor.Value()
+	}
+	//close the cursor
+	cursor.Close()
+	//close the database
+	//other operations
+	err = db.Close()
+
+
+
+ */
 type Database struct {
 	fs      *FileSystem
 	open    bool
 	closing bool
 	lock    sync.Mutex
 	rlock   sync.RWMutex
-	numops  uint64
 	options *Options
 	memdb   *memfs.Memtable
 	filter  *boom.ScalableBloomFilter
 	log     *os.File
 }
 
+/*
+Open is invoked by the client to start working with the database.
+In order to do so, the client needs to specify the directory where the database would store its contents.
+The client may specify certain options while opening the database.
+The call to open provides an instance of the database back to the client,
+to enable the client to work with the database to store or retrieve data.
+Any C0 component which has not been flushed to disk as a SSTable is loaded
+in memory as a Memtable.
+ */
 func Open(dir string, options *Options) (db *Database, err error) {
 	if dir == "" {
 		return nil, ErrPathRequired
@@ -80,6 +145,11 @@ func Open(dir string, options *Options) (db *Database, err error) {
 	return db, nil
 }
 
+/*
+Put saves a key and value pair in the database.
+In the event of any issue in saving the key value pair,
+an appropriate error is returned back to the client.
+ */
 func (db *Database) Put(key, value []byte) (err error) {
 	if !db.open || db.closing {
 		return ErrDatabaseClosed
@@ -150,7 +220,7 @@ func (db *Database) writeSSTable(memdb *memfs.Memtable) (err error) {
 	if err != nil {
 		return errors.Wrap(err, "unable to create sstable")
 	}
-	w := NewWriter(sst,db.options.UseCompression)
+	w := NewWriter(sst, db.options.UseCompression)
 	_, err = db.filter.WriteTo(sst.filterfile)
 	defer sst.filterfile.Close()
 	if err != nil {
@@ -170,6 +240,11 @@ func (db *Database) writeSSTable(memdb *memfs.Memtable) (err error) {
 	return nil
 }
 
+/*
+Get returns the latest value associated with a key or ErrorKeyNotFound if the key does not exist.
+Other erroneous cases return appropriate errors.
+
+ */
 func (db *Database) Get(key []byte) (value []byte, err error) {
 	if !db.open || db.closing {
 		return nil, ErrDatabaseClosed
@@ -188,7 +263,7 @@ func (db *Database) Get(key []byte) (value []byte, err error) {
 	if sst == nil {
 		return nil, ErrKeyNotFound
 	}
-	r := NewReader(sst,db.options.UseCompression)
+	r := NewReader(sst, db.options.UseCompression)
 	val, ok := r.Get(key)
 	if ok && !bytes.Equal(val, []byte(deleteMarker)) {
 		return val, nil
@@ -213,6 +288,10 @@ func (db *Database) findInMemDb(key []byte) []byte {
 	return nil
 }
 
+/*
+Delete deletes the value associated with a key. The value is assigned a special value tombstone\0.
+A deleted key can be resurrected by future writes.
+ */
 func (db *Database) Delete(key []byte) (ok bool, err error) {
 	if !db.open || db.closing {
 		return false, ErrDatabaseClosed
@@ -232,6 +311,11 @@ func (db *Database) Delete(key []byte) (ok bool, err error) {
 	return true, nil
 }
 
+/*
+Range allows the client to specify a start and an end key and returns a cursor which can be used to iterate
+over the range, start and end key inclusive.
+Range queries work only if the key range specified lies within the same SSTable.
+ */
 func (db *Database) Range(startkey, endKey []byte) (cursor *Cursor, err error) {
 	if !db.open || db.closing {
 		return nil, ErrDatabaseClosed
@@ -254,10 +338,10 @@ func (db *Database) Range(startkey, endKey []byte) (cursor *Cursor, err error) {
 		return nil, err
 	}
 
-	if strings.Compare(sst1.Id(), sst2.Id()) != 0 {
+	if strings.Compare(sst1.id, sst2.id) != 0 {
 		return nil, ErrRangeError
 	}
-	r := NewReader(sst1,db.options.UseCompression)
+	r := NewReader(sst1, db.options.UseCompression)
 	cursor, err = r.Range(startkey, endKey)
 	if err != nil {
 		return nil, err
@@ -265,6 +349,7 @@ func (db *Database) Range(startkey, endKey []byte) (cursor *Cursor, err error) {
 	return cursor, nil
 
 }
+
 func (db *Database) getSSTWithKey(key []byte) (sstable *SSTable, err error) {
 	files := GetDataFiles(db.fs.path)
 	sort.Sort(ByTime{files, DefaultNameFormat})
@@ -287,6 +372,10 @@ func (db *Database) getSSTWithKey(key []byte) (sstable *SSTable, err error) {
 	return nil, ErrKeyNotFound
 }
 
+/*
+Close closes an active database connection and releases any locks acquired on the database.
+It also flushes the C0 component to durable storage.
+ */
 func (db *Database) Close() (ok bool, err error) {
 	memdbFile, err := db.fs.OpenFile(MemdbFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
 	if err != nil {

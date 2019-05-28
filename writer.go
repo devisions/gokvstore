@@ -1,3 +1,15 @@
+/*
+ * //  Licensed under the Apache License, Version 2.0 (the "License");
+ * //  you may not use this file except in compliance with the
+ * //  License. You may obtain a copy of the License at
+ * //    http://www.apache.org/licenses/LICENSE-2.0
+ * //  Unless required by applicable law or agreed to in writing,
+ * //  software distributed under the License is distributed on an "AS
+ * //  IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * //  express or implied. See the License for the specific language
+ * //  governing permissions and limitations under the License.
+ */
+
 package gokvstore
 
 import (
@@ -13,6 +25,7 @@ import (
 )
 
 const (
+	//blockSize is the default block size is the SSTable
 	blockSize = 4096
 )
 
@@ -21,17 +34,26 @@ func encodeBlockInfo(dst []byte, b blockInfo) int {
 	m := binary.PutUvarint(dst[n:], b.length)
 	return n + m
 }
-
+/*
+index contains the key and the offset of the key in the SSTable.
+ */
 type index struct {
 	Key       []byte
 	KeyOffset uint64
 }
-
+/*
+blockInfo maintains the block start offset for a block in the data file,
+and the length of the block.
+ */
 type blockInfo struct {
 	start  uint64
 	length uint64
 }
 
+/*
+Writer is used to create a new SSTable. It writes the contents of the data file and the
+meta file to disk.
+ */
 type Writer struct {
 	dataFile             *os.File
 	metaFile             *os.File
@@ -53,7 +75,9 @@ type Writer struct {
 	tmp                  [50]byte
 	compress             bool
 }
-
+/*
+Set writes a key value pair to the data file and writes the offset to the meta file.
+ */
 func (w *Writer) Set(key, value []byte) error {
 	if w.err != nil {
 		return w.err
@@ -102,7 +126,10 @@ func (w *Writer) finishBlock() (blockInfo, error) {
 	return bh, nil
 
 }
-
+/*
+Close closes the writer and flushes the contents of the data file writer
+and meta file writer to disk.
+ */
 func (w *Writer) Close() (err error) {
 	defer func() {
 		if w.dataFile == nil && w.metaFile == nil {
@@ -208,7 +235,11 @@ func (w *Writer) writeFooter(n int) error {
 	}
 	return nil
 }
-
+/*
+NewWriter is used to create a new Writer for a SSTable. It initializes the io.Writer and
+the bufio.Writer for the data file and the meta file. If compress is true, the contents of each block
+are compressed using snappy compression before being written to disk.
+ */
 func NewWriter(sst *SSTable, compress bool) *Writer {
 	keyIndex := make([]index, 0)
 	blocks := make([]blockInfo, 0)
@@ -221,9 +252,9 @@ func NewWriter(sst *SSTable, compress bool) *Writer {
 		keyIndex:   keyIndex,
 		blocks:     blocks,
 		buf:        buf,
-		dataFile:   sst.DataFile(),
-		metaFile:   sst.MetaFile(),
-		filterFile: sst.FilterFile(),
+		dataFile:   sst.datafile,
+		metaFile:   sst.metafile,
+		filterFile: sst.filterfile,
 		compress:   compress,
 	}
 	w.bufferedWriter = bufio.NewWriter(w.dataFile)
