@@ -28,7 +28,6 @@ const (
 
 type Compactor struct {
 	fs      *FileSystem
-	filter  *boom.ScalableBloomFilter
 	files   []string
 	buckets []*bucket
 }
@@ -62,7 +61,7 @@ func (c *Compactor) Compact() {
 	c.makeBuckets(c.files)
 	done := make(chan interface{})
 	defer close(done)
-	for result := range c.compactBuckets(done, c.buckets) {
+	for result := range c.compactBuckets(done) {
 		fmt.Printf("filesBeforeCompaction : %d\n", result.numFilesBeforeCompaction)
 		fmt.Printf("filesAfterCompaction : %d\n", result.numFilesAfterCompaction)
 		fmt.Printf("numKeysBeforeCompaction : %d\n", result.numKeysBeforeCompaction)
@@ -77,7 +76,7 @@ func (c *Compactor) Compact() {
 }
 func (c *Compactor) makeBuckets(files []string) {
 	if len(files) >= minBucketSize && len(files) <= maxBucketSize {
-		b := bucket{c.files, false}
+		b := bucket{files, false}
 		c.buckets = append(c.buckets, &b)
 	} else {
 		c.makeBuckets(files[0 : len(files)/2])
@@ -85,11 +84,11 @@ func (c *Compactor) makeBuckets(files []string) {
 	}
 }
 
-func (c *Compactor) compactBuckets(done <-chan interface{}, buckets []*bucket) (<-chan compactionStats) {
+func (c *Compactor) compactBuckets(done <-chan interface{}) (<-chan compactionStats) {
 	results := make(chan compactionStats)
 	go func() {
 		defer close(results)
-		for _, bucket := range buckets {
+		for _, bucket := range c.buckets {
 			var cs compactionStats
 			cs = c.compactBucket(bucket)
 			select {
@@ -105,6 +104,7 @@ func (c *Compactor) compactBuckets(done <-chan interface{}, buckets []*bucket) (
 func (c *Compactor) compactBucket(b *bucket) (cs compactionStats) {
 
 	startTime := time.Now()
+	filter := boom.NewDefaultScalableBloomFilter(0.01)
 	iters := make([]*chunkIterator, 0)
 	sort.Sort(ByTime{b.files, DefaultNameFormat})
 	for _, f := range b.files {
@@ -124,10 +124,10 @@ func (c *Compactor) compactBucket(b *bucket) (cs compactionStats) {
 
 	mergingIter := NewMergingIterator(iters)
 	for mergingIter.Next() {
-		c.filter.Add(mergingIter.Key())
+		filter.Add(mergingIter.Key())
 		w.Set(mergingIter.Key(), mergingIter.Value())
 	}
-	_, err = c.filter.WriteTo(sst.filterfile)
+	_, err = filter.WriteTo(sst.filterfile)
 	defer sst.filterfile.Close()
 	if err != nil {
 		return compactionStats{err: err}
@@ -175,9 +175,10 @@ func NewCompactor(path string) *Compactor {
 	}
 	fs := NewFS(path, &opts)
 	files := GetDataFiles(path)
+	buckets := make([]*bucket, 0)
 	return &Compactor{
-		fs:     fs,
-		files:  files,
-		filter: boom.NewDefaultScalableBloomFilter(0.01),
+		fs:      fs,
+		files:   files,
+		buckets: buckets,
 	}
 }

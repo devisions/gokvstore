@@ -561,6 +561,34 @@ func BenchmarkDatabase_Put(b *testing.B) {
 
 }
 
+func BenchmarkDatabase_Get(b *testing.B) {
+	dir := "/tmp/test"
+	opts := Options{
+		ReadOnly:       false,
+		UseCompression: true,
+		SyncWrite:      false,
+	}
+	db, err := Open(dir, &opts)
+	if err != nil {
+		b.Error("failed to open database", err)
+	}
+	testKeys := make([][]byte, 0)
+	for j := 0; j < 2.5*filterSize; j++ {
+		k := randomBytes(5)
+		testKeys = append(testKeys, k)
+		db.Put(k, randomBytes(5))
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := db.Get(testKeys[i%len(testKeys)])
+		if err != nil {
+			b.Error("failed to get", err)
+		}
+	}
+	db.Close()
+
+}
+
 const charset = "abcdefghijklmnopqrstuvwxyz" +
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
