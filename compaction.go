@@ -17,7 +17,6 @@ import (
 	"sort"
 	"path"
 	"io/ioutil"
-	"log"
 	"github.com/tylertreat/BoomFilters"
 	"time"
 )
@@ -103,8 +102,6 @@ func (c *Compactor) compactBuckets(done <-chan interface{}, buckets []*bucket) (
 	return results
 }
 
-var cerr error
-
 func (c *Compactor) compactBucket(b *bucket) (cs compactionStats) {
 
 	startTime := time.Now()
@@ -114,16 +111,14 @@ func (c *Compactor) compactBucket(b *bucket) (cs compactionStats) {
 		fName := path.Join(c.fs.path, f) + dataFileExt
 		data, err := ioutil.ReadFile(fName)
 		if err != nil {
-			cerr = err
-			log.Fatal("failed to compact bucket")
+			return compactionStats{err: err}
 		}
 		iter := NewChunkIterator(data)
 		iters = append(iters, iter)
 	}
 	sst, err := c.fs.NewSSTable()
 	if err != nil {
-		cerr = err
-		fmt.Errorf("unable to create new sstable %v\n", err)
+		return compactionStats{err: err}
 	}
 	w := NewWriter(sst, c.fs.options.UseCompression)
 
@@ -135,13 +130,11 @@ func (c *Compactor) compactBucket(b *bucket) (cs compactionStats) {
 	_, err = c.filter.WriteTo(sst.filterfile)
 	defer sst.filterfile.Close()
 	if err != nil {
-		cerr = err
-		fmt.Errorf("unable to write filter %v\n", err)
+		return compactionStats{err: err}
 	}
 	err = w.Close()
 	if err != nil {
-		cerr = err
-		fmt.Errorf("unable to write sstable %v\n", err)
+		return compactionStats{err: err}
 	}
 	elapsed := time.Since(startTime)
 	timeTaken := fmt.Sprintf("%s", elapsed)
@@ -156,7 +149,7 @@ func (c *Compactor) compactBucket(b *bucket) (cs compactionStats) {
 		numKeysBeforeCompaction:  keysBeforeCompaction,
 		numKeysAfterCompaction:   mergingIter.numKeysAfterCompaction,
 		timeToCompactBucket:      timeTaken,
-		err:                      cerr,
+		err:                      nil,
 	}
 	return stats
 

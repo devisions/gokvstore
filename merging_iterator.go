@@ -24,16 +24,19 @@ If keys are overlapping, it returns the key and value from the iterator containi
 for that key.
  */
 type MergingIterator struct {
-	iters                   []*chunkIterator
-	key, value              []byte
-	numKeysAfterCompaction  uint64
+	iters                  []*chunkIterator
+	key, value             []byte
+	closed                 bool
+	numKeysAfterCompaction uint64
 }
 
 /*
-Next is used to iterate over the keys and values in all the iterators, returning the smallest
-key across all iterators.
+Next is used to iterate over the keys and values in the merging iterator.
  */
 func (mi *MergingIterator) Next() (hasNext bool) {
+	if mi.closed {
+		return false
+	}
 	if mi.end() {
 		return false
 	}
@@ -46,14 +49,14 @@ func (mi *MergingIterator) Next() (hasNext bool) {
 }
 
 /*
-Key returns the smallest key across all iterators
+Key returns the current key
  */
 func (mi *MergingIterator) Key() (key []byte) {
 	return mi.key
 }
 
 /*
-Value returns the value associated with the smallest key.
+Value returns the value associated with the current key.
  */
 func (mi *MergingIterator) Value() (value []byte) {
 	return mi.value
@@ -69,6 +72,7 @@ func (mi *MergingIterator) Close() (err error) {
 			fmt.Errorf("Failed to close the iterator %v", err)
 		}
 	}
+	mi.closed = true
 	return nil
 }
 
