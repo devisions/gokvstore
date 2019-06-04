@@ -9,7 +9,7 @@ License
 
 Apache License 2.0
 
-Example
+Example - Basic Usage
 =======
 
 	dir := "path/to/some/dir"
@@ -43,6 +43,17 @@ Example
 	
     
 =======
+
+Example - Compacting the Database
+=======
+dir := "path/to/database/dir"
+
+c := NewCompactor(dir)
+c.Compact()
+
+
+=======
+
 
 Features
 =======
