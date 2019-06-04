@@ -44,6 +44,8 @@ Example - Basic Usage
     
 =======
 
+
+
 Example - Compacting the Database
 =======
 dir := "path/to/database/dir"
