@@ -11,8 +11,8 @@ Apache License 2.0
 
 Example - Basic Usage
 =======
-
-	dir := "path/to/some/dir"
+```golang
+    dir := "path/to/some/dir"
     opts := Options{
     		ReadOnly:       false,
     		UseCompression: true,
@@ -41,19 +41,20 @@ Example - Basic Usage
 	//close the database
 	err = db.Close()
 	
-    
+```    
 =======
 
 
 
 Example - Compacting the Database
-=======
+=========
+```golang
 dir := "path/to/database/dir"
 
 c := NewCompactor(dir)
 c.Compact()
 
-
+```
 =======
 
 
