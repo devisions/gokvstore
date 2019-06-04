@@ -7,7 +7,7 @@ This is the implementation of a KV store developed for the book **Go The Other W
 License
 =======
 
-BSD 3-Clause License 
+Apache License 2.0
 
 Example
 =======
